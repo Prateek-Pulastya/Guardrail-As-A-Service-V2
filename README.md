@@ -65,8 +65,11 @@ classes. Hardware: local Docker on Windows, CPU inference for Tier 2.
 
 > ⚠️ **Read Tables 1–2 as in-sample fit, not generalisation.** Tier 1's blocklist was
 > tuned by inspecting the attacks it missed *on this corpus*, so its recall here is
-> partly memorisation. The honest held-out figure is **0.7895** for Tier 1 alone and
-> **1.0000** for the full cascade — see [Held-out evaluation](#held-out-evaluation--the-number-that-actually-estimates-generalisation).
+> partly memorisation. Held out from the same corpus it scores **0.7895**
+> ([held-out evaluation](#held-out-evaluation--the-number-that-actually-estimates-generalisation)),
+> and on the standard external benchmark it scores **0.40**
+> ([Open-Prompt-Injection](#external-benchmark--open-prompt-injection-detection)).
+> The external number is the one to quote.
 
 ### Table 1 — Overall detection
 
@@ -186,6 +189,50 @@ holdout, and that is the main methodological finding here.**
 > standalone generalisation. The split, the rule provenance (every term is annotated
 > with the train miss that motivated it), and the scripts are committed so the protocol
 > can be re-run cleanly.
+
+### External benchmark — Open-Prompt-Injection (detection)
+
+[Open-Prompt-Injection](https://github.com/liu00222/Open-Prompt-Injection) (Liu, Jia,
+Geng, Jia & Gong, **USENIX Security 2024**) is the standard formalisation of prompt
+injection. It builds attacks by splicing an *injected* task's instruction and data into
+a *target* task's data under five strategies. The five templates and the injected
+instructions used here are transcribed from upstream source; task data comes from the
+HuggingFace datasets-server. 450 injected prompts across 6 tasks, plus 180 clean
+task-data prompts as negatives.
+Run with [`scripts/eval_open_prompt_injection.py`](scripts/eval_open_prompt_injection.py)
+→ [`results/open_prompt_injection_results.json`](results/open_prompt_injection_results.json).
+
+| Attack strategy | Tier 1 | Tier 2 | Combined |
+|---|---|---|---|
+| naive | 0/90 (**0%**) | 0/90 (0%) | 0/90 (**0%**) |
+| escape | 0/90 (**0%**) | 0/90 (0%) | 0/90 (**0%**) |
+| ignore | 90/90 (100%) | 34/90 (38%) | 90/90 (100%) |
+| fake_completion | 0/90 (**0%**) | 0/90 (0%) | 0/90 (**0%**) |
+| combined | 90/90 (100%) | 23/90 (26%) | 90/90 (100%) |
+| **overall** | **180/450 (40%)** | 57/450 (13%) | **180/450 (40%)** |
+| FPR on clean task data | 0/180 (0%) | 3/180 (2%) | **0/180 (0%)** |
+
+**This is the most important number in this README: 40% recall on the standard
+benchmark, against 100% on the in-house corpus.**
+
+The breakdown explains exactly why, and it is not a tuning gap. GuardRail detects the
+two strategies that contain the literal string *"Ignore previous instructions."* and
+misses all three that do not. `naive`, `escape` and `fake_completion` inject a
+*competing instruction* without any override phrasing — a movie review followed by
+"Does the following text contain spam or phishing contents?" — and nothing in a
+blocklist of override idioms fires on that.
+
+The honest characterisation of this system is therefore:
+
+> **GuardRail detects lexically-marked override attempts, not instruction injection in
+> general.** Its in-house corpus is dominated by attacks that announce themselves
+> ("ignore", "disregard", "you are now DAN"), which is why in-sample recall looked
+> perfect. An attacker who simply appends a well-formed instruction is not detected.
+
+Tier 2 does not rescue this: a model fine-tuned specifically for prompt-injection
+detection scores 13% overall, and even on the `ignore` strategy only 38%. Both tiers
+key on override vocabulary. Precision holds up — 0% FPR for Tier 1 on 180 real
+task-data prompts.
 
 ### External benchmark — NotInject (over-defense)
 
