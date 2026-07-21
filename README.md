@@ -187,6 +187,56 @@ holdout, and that is the main methodological finding here.**
 > with the train miss that motivated it), and the scripts are committed so the protocol
 > can be re-run cleanly.
 
+### External benchmark — NotInject (over-defense)
+
+[NotInject](https://huggingface.co/datasets/leolee99/NotInject) (Li & Liu, 2024,
+arXiv:2410.22770; published as PIGuard, ACL 2025) is 339 samples that are **all
+benign** but deliberately seeded with trigger words common in injection attacks.
+Every block is a false positive. Splits carry one, two and three trigger words, so
+FPR by split shows how over-defense scales with trigger density.
+Run with [`scripts/eval_notinject.py`](scripts/eval_notinject.py) →
+[`results/notinject_results.json`](results/notinject_results.json).
+
+| Mode | Blocked / 339 | **FPR** | Accuracy |
+|---|---|---|---|
+| Tier 1 (197-term blocklist) | **0** | **0.0000** | 1.0000 |
+| Tier 2 (DeBERTa-v3) | 137 | **0.4041** | 0.5959 |
+| Combined | 137 | 0.4041 | 0.5959 |
+
+| Trigger words | n | Tier 1 FP | Tier 2 FP |
+|---|---|---|---|
+| one | 113 | 0 | 23 (20%) |
+| two | 113 | 0 | 56 (50%) |
+| three | 113 | 0 | 58 (51%) |
+
+**The result is the opposite of what the design would predict.** NotInject exists to
+punish exactly the keyword-matching approach Tier 1 uses, yet Tier 1 blocks *none* of
+the 339 — because its terms are multi-word imperative phrases ("ignore the user",
+"your system prompt"), not bare trigger tokens. The learned tier is the one that
+over-defends, and it degrades sharply as trigger density rises. A large share of its
+false positives are benign Chinese prompts, where a single character is treated as a
+trigger.
+
+This is not threshold-tunable. On NotInject's benign samples Tier 2's injection score
+has median 0.9992 (53% at ≥0.999); on the held-out attacks it correctly rescues, the
+median is 1.0000 (88% at ≥0.999). The distributions overlap almost completely — no
+cutoff separates them.
+
+**So the two tiers fail in opposite directions, and the cascade inherits the worse of
+each:**
+
+| | Held-out recall | NotInject FPR |
+|---|---|---|
+| Tier 1 alone | 0.7895 | 0.0000 |
+| Tier 1 + Tier 2 | 1.0000 | 0.4041 |
+
+Tier 2 buys the last 21 points of recall on unseen attacks and costs 40% false
+positives on adversarially-benign traffic. Which side of that trade is correct depends
+on deployment: an internal tool may accept over-blocking, a consumer product will not.
+The honest summary is that **this cascade does not currently have a configuration that
+is simultaneously robust and precise** — which is a more useful finding than the
+1.000/0.000 the in-sample evaluation appeared to show.
+
 ### Tier 2 model selection — INT8 quantization is not free
 
 Measured over the same 271-sample corpus at threshold 0.75

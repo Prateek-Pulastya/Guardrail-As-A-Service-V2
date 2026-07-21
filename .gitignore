@@ -32,3 +32,6 @@ Thumbs.db
 semgrep-report.json
 bandit-report.json
 safety-report.json
+
+# Cached external benchmark data (re-fetched by scripts/eval_notinject.py)
+data/
