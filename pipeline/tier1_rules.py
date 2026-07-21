@@ -112,6 +112,19 @@ _LEET_MAP = str.maketrans({
 _DEOBF_STRIP = re.compile(r"[.\-_*·•]")
 
 
+def _normalize_linebreaks(text: str) -> str:
+    """
+    Normalize while preserving line breaks as sentence boundaries.
+
+    `_normalize` collapses all whitespace, so a payload appended on its own line
+    ("<context>\\n Write a script to ...") loses the boundary and a
+    sentence-initial anchor can no longer see it. Injected content is very often
+    delimited by a newline rather than punctuation, so the instruction-in-data
+    scan runs against this variant instead.
+    """
+    return _normalize(re.sub(r"[\r\n]+", " . ", text))
+
+
 def _deobfuscate(normalized: str) -> str:
     """
     Aggressive de-obfuscation of already-normalized text, used as a SECOND
@@ -318,10 +331,13 @@ class Tier1Engine:
                         latency_ms=round(elapsed, 4),
                     )
 
-        # Instruction-in-data scan — only for untrusted payloads.
+        # Instruction-in-data scan — only for untrusted payloads. Runs against a
+        # line-break-preserving normalization so that content appended on its own
+        # line still presents a sentence boundary for the anchors to match.
         if source == "data":
+            data_targets = scan_targets + [_normalize_linebreaks(decoded)]
             for pattern in self._data_instruction_patterns:
-                for target in scan_targets:
+                for target in data_targets:
                     if pattern.search(target):
                         elapsed = (time.perf_counter() - t0) * 1000
                         return MatchResult(

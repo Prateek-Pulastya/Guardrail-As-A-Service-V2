@@ -266,18 +266,23 @@ data_instruction_patterns:
   - "\\byour task is to\\b"
   - "\\byour job is to\\b"
 
-  # Sentence-initial imperative from a task-verb list. The patterns above only
-  # catch verbose, explicitly-formatted task specs; without this, terse
-  # imperatives ("Translate this sentence into French.", "Summarize in one
-  # line.") were detected 0/12 in a generalisation probe, and they are a
-  # perfectly good injection.
+  # Sentence-initial imperative from a broad task-verb list, plus assistant-
+  # directed question forms. The patterns above only catch verbose, explicitly-
+  # formatted task specs; without these, terse imperatives ("Translate this
+  # sentence into French.") and naturally-phrased requests ("Write a script to
+  # rename all files", "How can I back up my documents?") go undetected, and
+  # both are perfectly good injections when they appear inside data.
   #
-  # Measured cost of this one pattern, since it is the loosest rule here:
-  #   0/180 on Open-Prompt-Injection clean task data
-  #   2/100 on additional real SMS payloads (imperative-heavy prose)
-  # It is deliberately scoped to source="data" only — under source="user" a
-  # leading "Summarize ..." is the entire point of the request.
-  - "(?:^|[.!?]\\s+)(?:now\\s+|then\\s+|please\\s+)?(translate|summari[sz]e|rewrite|convert|print|output|list|count|rate|reply|respond|answer|repeat|describe|calculate|compute|say)\\b"
+  # Measured effect of widening the verb list (see README "BIPIA"):
+  #   BIPIA recall      8.2% -> 48.0%
+  #   Open-Prompt-Inj.  100% -> 99%
+  #   FPR  OPI clean task data 0/180 · BIPIA clean contexts 1/60 · real SMS 5/100
+  #
+  # The SMS cost (2% -> 5%) is the price of the wider vocabulary. Scoped to
+  # source="data" only — under source="user" a leading "Summarize ..." is the
+  # entire point of the request.
+  - "(?:^|[.!?\\n]\\s*)(?:now\\s+|then\\s+|please\\s+|kindly\\s+)?(translate|summari[sz]e|rewrite|convert|print|output|list|count|rate|reply|respond|answer|repeat|describe|calculate|compute|say|write|analyz|analys|provide|recommend|suggest|show|explain|create|generate|find|search|tell|give|help|identify|compare|draft|compose|design|build|make|encode|decode|encrypt)\\w*\\b"
+  - "(?:^|[.!?\\n]\\s*)(how (can|do|would|should) (i|you)|what (are|is) the|which (of|one)|can you|could you|would you)\\b"
 
 # ── Regex patterns ───────────────────────────────────────────────────────────
 # More expensive but catch structural attacks with variable forms.
