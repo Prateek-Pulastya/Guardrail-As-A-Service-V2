@@ -5,22 +5,22 @@
     "f1": 1.0,
     "fpr": 0.0,
     "latency_p50_ms": 0.09,
-    "latency_p95_ms": 0.23
+    "latency_p95_ms": 0.21
   },
   "tier2_only": {
     "precision": 0.9884,
     "recall": 0.9,
     "f1": 0.9421,
     "fpr": 0.0247,
-    "latency_p50_ms": 24.1,
-    "latency_p95_ms": 38.07
+    "latency_p50_ms": 24.3,
+    "latency_p95_ms": 41.4
   },
   "combined": {
-    "precision": 0.9896,
+    "precision": 1.0,
     "recall": 1.0,
-    "f1": 0.9948,
-    "fpr": 0.0247,
-    "latency_p50_ms": 0.11,
-    "latency_p95_ms": 45.0
+    "f1": 1.0,
+    "fpr": 0.0,
+    "latency_p50_ms": 0.1,
+    "latency_p95_ms": 24.77
   }
 }

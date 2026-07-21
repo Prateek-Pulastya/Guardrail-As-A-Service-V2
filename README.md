@@ -22,8 +22,8 @@ flowchart LR
     C -->|primary scan| D{De-obfuscation pass<br/>de-leet · strip separators}
     C -->|match| BLOCK[BLOCK · blocked_by=tier1]
     D -->|match| BLOCK
-    D -->|no match| E{Tier 2<br/>DeBERTa-v3 ONNX INT8<br/>block if score ≥ 0.75}
-    E -->|score ≥ 0.75| BLOCK2[BLOCK · blocked_by=tier2]
+    D -->|no match| E{Tier 2<br/>DeBERTa-v3 ONNX fp32<br/>monitor-only: scores, does not block}
+    E -->|score ≥ 0.75| FLAG[ALLOW + log TIER2-FLAG]
     E -->|score < 0.75| ALLOW[ALLOW]
 ```
 
@@ -37,6 +37,15 @@ over a de-obfuscated variant that de-leets digits/symbols and strips intra-word
 separators. That second pass is what catches `1gn0r3 prev10us 1nstruct10ns`,
 `!gnore prev!ous !nstruct!ons` and `instr-uction-s` without the first pass losing
 literal token markers.
+
+**Tier 2 is monitor-only.** It scores every prompt Tier 1 clears and logs a
+`TIER2-FLAG` when it would have blocked, but it does not block. This is a measured
+decision, not a default left unexamined: on the external NotInject benchmark Tier 2
+blocks 40.4% of benign prompts against Tier 1's 0.0%, and the over-defense is not
+threshold-separable. The cost is a recall ceiling — on held-out data Tier 2 would have
+caught the 16 attacks Tier 1 misses. Both operating points are reported under
+[External benchmark — NotInject](#external-benchmark--notinject-over-defense);
+the blocking one is reachable via `POST /validate?tier=2`.
 
 **Fail-open policy.** If the Tier 2 model is missing or errors, the request is allowed
 rather than dropped — availability is preserved, at the cost of semantic coverage.
@@ -64,18 +73,15 @@ classes. Hardware: local Docker on Windows, CPU inference for Tier 2.
 | Metric | Value |
 |---|---|
 | Corpus | 271 (190 attack / 81 benign) |
-| Precision | 0.9896 |
-| Recall | **1.0000** |
-| F1 | 0.9948 |
-| False positive rate | 0.0247 |
-| TP / FP / TN / FN | 190 / 2 / 79 / 0 |
-| Latency p50 / p95 / p99 | 0.10 ms / 25.18 ms / 35.97 ms |
+| Precision | 1.0000 |
+| Recall | 1.0000 |
+| F1 | 1.0000 |
+| False positive rate | 0.0000 |
+| TP / FP / TN / FN | 190 / 0 / 81 / 0 |
+| Latency p50 / p95 / p99 | 0.14 ms / 26.21 ms / 32.11 ms |
 
-The two false positives are both benign *corrections* — "Please ignore my last
-message and answer this instead." and "Ignore my previous question. I meant to ask
-something else." Tier 1 passes both; **Tier 2 flags them**. This is trigger-word
-over-defense of the kind InjecGuard's NotInject benchmark was built to measure
-(Li & Liu, 2024), and it is the cost of the second tier on this corpus.
+All 190 blocks come from Tier 1 (Tier 2 is monitor-only — see below). Read these
+figures as in-sample fit, not generalisation.
 
 ### Table 2 — Recall by attack class
 
@@ -118,23 +124,17 @@ over-defense of the kind InjecGuard's NotInject benchmark was built to measure
 
 | Condition | Precision | Recall | F1 | FPR | p50 | p95 |
 |---|---|---|---|---|---|---|
-| Tier 1 only | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 0.09 ms | 0.23 ms |
-| Tier 2 only | 0.9884 | 0.9000 | 0.9421 | 0.0247 | 24.10 ms | 38.07 ms |
-| Combined | 0.9896 | 1.0000 | 0.9948 | 0.0247 | 0.11 ms | 45.00 ms |
+| Tier 1 only | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 0.09 ms | 0.21 ms |
+| Tier 2 only | 0.9884 | 0.9000 | 0.9421 | 0.0247 | 24.30 ms | 41.40 ms |
+| Combined (shipping default) | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 0.10 ms | 24.77 ms |
 
-> **On this corpus the second tier costs precision and adds no recall.** Tier 1 already
-> reaches 1.000 recall, so Tier 2 contributes no additional detections (routing: 190
-> blocked by Tier 1, 2 by Tier 2 — and both of those are false positives). Combined FPR
-> is therefore Tier 2's FPR.
->
-> This does **not** generalise to "Tier 2 is useless": Tier 1's 1.000 recall is measured
-> on the same corpus its rules were tuned against (see the caveat under Table 2), whereas
-> Tier 2 reaches 0.900 recall on that corpus having never been fitted to it. Against
-> unseen attack phrasings the ordering could reverse. What this corpus does show is a
-> concrete precision cost from the semantic tier.
->
-> ⚠️ **Earlier revisions of this table reported Tier 2 recall as 0.0053.** That figure was
-> a quantization artefact, not a property of the model — see *Tier 2 model selection* below.
+`tier1_only` and `tier2_only` are forced via `POST /validate?tier=1|2`. Because Tier 2
+is monitor-only, `combined` equals Tier 1 on this corpus: Tier 1 already reaches 1.000
+in-sample recall, so there is nothing left for a second blocking tier to add here. The
+value of Tier 2 shows up only on held-out data — see below.
+
+> ⚠️ **Earlier revisions of this table reported Tier 2 recall as 0.0053.** That was a
+> quantization artefact, not a property of the model — see *Tier 2 model selection*.
 
 ### Held-out evaluation — the number that actually estimates generalisation
 
@@ -200,8 +200,8 @@ Run with [`scripts/eval_notinject.py`](scripts/eval_notinject.py) →
 | Mode | Blocked / 339 | **FPR** | Accuracy |
 |---|---|---|---|
 | Tier 1 (197-term blocklist) | **0** | **0.0000** | 1.0000 |
-| Tier 2 (DeBERTa-v3) | 137 | **0.4041** | 0.5959 |
-| Combined | 137 | 0.4041 | 0.5959 |
+| Tier 2 (DeBERTa-v3, forced via `?tier=2`) | 137 | **0.4041** | 0.5959 |
+| Combined (shipping default, Tier 2 monitor-only) | **0** | **0.0000** | 1.0000 |
 
 | Trigger words | n | Tier 1 FP | Tier 2 FP |
 |---|---|---|---|
@@ -222,20 +222,26 @@ has median 0.9992 (53% at ≥0.999); on the held-out attacks it correctly rescue
 median is 1.0000 (88% at ≥0.999). The distributions overlap almost completely — no
 cutoff separates them.
 
-**So the two tiers fail in opposite directions, and the cascade inherits the worse of
-each:**
+**The two tiers fail in opposite directions**, which forces an explicit choice:
 
-| | Held-out recall | NotInject FPR |
+| Operating point | Held-out recall | NotInject FPR |
 |---|---|---|
-| Tier 1 alone | 0.7895 | 0.0000 |
-| Tier 1 + Tier 2 | 1.0000 | 0.4041 |
+| Tier 1 only — **shipping default** (Tier 2 monitor-only) | 0.7895 | **0.0000** |
+| Tier 1 + Tier 2 blocking | **1.0000** | 0.4041 |
 
 Tier 2 buys the last 21 points of recall on unseen attacks and costs 40% false
-positives on adversarially-benign traffic. Which side of that trade is correct depends
-on deployment: an internal tool may accept over-blocking, a consumer product will not.
-The honest summary is that **this cascade does not currently have a configuration that
-is simultaneously robust and precise** — which is a more useful finding than the
-1.000/0.000 the in-sample evaluation appeared to show.
+positives on adversarially-benign traffic. There is no configuration that is
+simultaneously robust and precise, and no threshold that splits the difference.
+
+**Tier 2 therefore ships in monitor-only mode**: it scores every prompt Tier 1 clears
+and logs a `TIER2-FLAG` when it would have blocked, but it does not block. A 40%
+false-block rate is not a shippable default; a 0.79 recall floor with clean precision
+is. The blocking operating point remains measurable through `POST /validate?tier=2`,
+so both rows above stay reproducible.
+
+This is a more useful result than the 1.000 / 0.000 the in-sample evaluation appeared
+to show — that figure was one detector memorising its own test set, and it concealed
+both the recall ceiling and the precision cliff.
 
 ### Tier 2 model selection — INT8 quantization is not free
 

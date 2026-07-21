@@ -105,14 +105,26 @@ async def validate(
             latency_ms=round(total_ms, 2),
         )
 
-    # ── Tier 2: DeBERTa-v3 semantic classifier ────────────────────────────
+    # ── Tier 2: DeBERTa-v3 semantic classifier — MONITOR ONLY ─────────────
+    #
+    # Tier 2 scores every prompt Tier 1 clears, but its verdict does not block.
+    # Measured rationale (see README "External benchmark — NotInject"): on the
+    # 339 benign NotInject samples Tier 2 blocks 137 (FPR 0.404) against Tier 1's
+    # 0.000, and the over-defense is not threshold-separable — its score on those
+    # benign prompts has median 0.9992 versus 1.0000 on true attacks. A 40%
+    # false-block rate is not a shippable default.
+    #
+    # The cost is real and recorded: on held-out data Tier 2 rescues the 16
+    # attacks Tier 1 misses (recall 0.7895 -> 1.0000). That operating point is
+    # still measurable via `POST /validate?tier=2`, which returns Tier 2's
+    # verdict directly, so the ablation and the paper can report both.
     t2_result = tier2.validate(body.prompt)
 
     total_ms = (time.perf_counter() - t_total) * 1000
 
     if t2_result.blocked:
-        logger.info(
-            f"BLOCKED tier2 | score={t2_result.score} | "
+        logger.warning(
+            f"TIER2-FLAG (monitor only, not blocked) | score={t2_result.score} | "
             f"latency={t2_result.latency_ms:.1f}ms"
         )
     else:
@@ -122,9 +134,9 @@ async def validate(
         )
 
     return ValidateResponse(
-        allowed=not t2_result.blocked,
-        blocked_by="tier2" if t2_result.blocked else None,
-        reason=f"injection_score={t2_result.score}" if t2_result.blocked else None,
+        allowed=True,
+        blocked_by=None,
+        reason=None,
         tier1_latency_ms=t1_result.latency_ms,
         tier2_latency_ms=t2_result.latency_ms,
         tier2_score=t2_result.score,
