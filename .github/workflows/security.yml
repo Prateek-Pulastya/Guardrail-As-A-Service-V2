@@ -1,0 +1,163 @@
+name: CI — Security Scan + Unit Tests
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # ── Unit tests (no Docker required) ──────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          pip install pyahocorasick pyyaml pytest pytest-asyncio rich numpy scipy pandas httpx
+
+      - name: Run Tier 1 unit tests (no service needed)
+        run: pytest tests/unit/ -v --tb=short
+
+  # ── SAST: Semgrep ─────────────────────────────────────────────────────────
+  semgrep:
+    name: SAST — Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep (Python security rules + secrets detection)
+        run: |
+          semgrep scan \
+            --config=p/python \
+            --config=p/secrets \
+            --config=p/owasp-top-ten \
+            --error \
+            --json \
+            --output semgrep-report.json \
+            pipeline/ main.py eval_harness.py || true
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+  # ── SAST: Bandit ─────────────────────────────────────────────────────────
+  bandit:
+    name: SAST — Bandit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit on pipeline/ (medium severity + high confidence)
+        run: |
+          bandit \
+            -r pipeline/ main.py \
+            -l -i \
+            -f json \
+            -o bandit-report.json || true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  # ── Dependency audit: Safety ──────────────────────────────────────────────
+  safety:
+    name: Dependency Audit — Safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Audit dependencies for known CVEs
+        run: |
+          safety scan \
+            --policy-file .safety-policy.yml \
+            --output json \
+            --save-as json safety-report.json || true
+
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-report
+          path: safety-report.json
+
+  # ── Dependency review on PRs ──────────────────────────────────────────────
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  # ── Docker build check ────────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t guardrail:ci .
+
+      - name: Smoke test — health endpoint
+        run: |
+          docker run -d -p 8100:8100 --name guardrail-ci guardrail:ci
+          sleep 20
+          curl -f http://localhost:8100/health || (docker logs guardrail-ci && exit 1)
+          docker stop guardrail-ci
+
+  # ── Integration tests (requires Docker) ───────────────────────────────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install pyahocorasick pyyaml pytest pytest-asyncio rich numpy scipy pandas httpx
+
+      - name: Start service
+        run: |
+          docker build -t guardrail:ci .
+          docker run -d -p 8100:8100 --name guardrail-ci guardrail:ci
+          sleep 20
+
+      - name: Run integration tests (excluding slow Tier 2 tests in CI)
+        run: pytest tests/adversarial/ -v --tb=short -m "not slow"
+
+      - name: Stop service
+        if: always()
+        run: docker stop guardrail-ci || true

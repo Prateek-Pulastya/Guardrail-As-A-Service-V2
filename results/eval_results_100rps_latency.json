@@ -1,0 +1,11 @@
+{
+  "target_rps": 100,
+  "duration_s": 30,
+  "total_requests": 3329,
+  "errors": 27,
+  "achieved_rps": 111.0,
+  "p50_ms": 0.09,
+  "p95_ms": 28.05,
+  "p99_ms": 39.88,
+  "mean_ms": 6.98
+}

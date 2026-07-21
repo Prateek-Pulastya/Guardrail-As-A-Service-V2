@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Models (large binary files — download separately)
+models/
+
+# Results are intentionally TRACKED: the eval JSONs are the published
+# artifact backing Tables 1-5 (see RUNBOOK Phase 16/18). Do not ignore them.
+
+# Environment
+.env
+.env.*
+
+# Docker
+.docker/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Safety / Semgrep reports (ephemeral)
+semgrep-report.json
+bandit-report.json
+safety-report.json

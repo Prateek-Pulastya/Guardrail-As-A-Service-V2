@@ -1,0 +1,38 @@
+# fly.toml — Fly.io deployment for GuardRail-as-a-Service
+# Deploy with: fly deploy
+
+app = "guardrail-service"
+primary_region = "fra"       # Frankfurt — closest to CISPA/TU Delft reviewers
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  LOG_LEVEL = "info"
+
+[http_service]
+  internal_port = 8100
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0      # free tier: scales to zero
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512              # enough for ONNX model in memory
+
+[checks]
+  [checks.health]
+    grace_period = "30s"
+    interval = "15s"
+    method = "GET"
+    path = "/health"
+    port = 8100
+    timeout = "5s"
+    type = "http"

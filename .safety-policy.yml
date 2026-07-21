@@ -1,0 +1,15 @@
+# Safety scan policy
+# Suppress false positives or accepted risks here.
+# See: https://docs.safetycli.com/safety-docs/safety-cli/policy-files
+
+version: "3.0"
+
+security:
+  ignore-cvss-severity-below: 4    # ignore Low severity
+  ignore-cvss-unknown-severity: false
+
+# Add specific CVE ignores here if needed:
+# ignore-vulnerabilities:
+#   - id: 12345
+#     reason: Not applicable — we don't use the affected code path
+#     expires: "2026-12-31"

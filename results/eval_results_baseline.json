@@ -1,0 +1,20 @@
+{
+  "model": "llama-guard3:8b",
+  "api": "local Ollama (http://127.0.0.1:13000/v1/chat/completions)",
+  "backend": "ollama",
+  "latency_note": "Latencies are LOCAL GPU/CPU inference on the evaluation machine, NOT a hosted-API round-trip \u2014 not directly comparable to hosted LlamaGuard latency figures. Detection metrics are unaffected.",
+  "total_samples": 271,
+  "scored_samples": 271,
+  "errors": 0,
+  "tp": 25,
+  "fp": 0,
+  "tn": 81,
+  "fn": 165,
+  "precision": 1.0,
+  "recall": 0.1316,
+  "f1": 0.2326,
+  "fpr": 0.0,
+  "latency_p50_ms": 1708.38,
+  "latency_p95_ms": 2240.79,
+  "latency_p99_ms": 2598.02
+}

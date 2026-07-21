@@ -1,0 +1,61 @@
+services:
+  guardrail:
+    build: .
+    container_name: guardrail
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./models:/app/models:ro      # pre-built model dir
+      - ./config:/app/config:ro      # hot-reload rules (requires restart)
+    environment:
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - guardrail-net
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      # Host port 19090: Windows/Hyper-V dynamically reserves the 9035-9434
+      # range, which swallows 9090. Container port is unchanged, so Prometheus
+      # still scrapes guardrail:8100 over the compose network as normal.
+      - "19090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+    networks:
+      - guardrail-net
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=guardrail
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - guardrail-net
+
+volumes:
+  grafana-storage:
+
+networks:
+  guardrail-net:
+    driver: bridge
