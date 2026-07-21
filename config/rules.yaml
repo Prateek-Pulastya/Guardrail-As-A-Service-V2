@@ -233,6 +233,52 @@ blocklist:
   - "ignore-all-filters"
 
 
+# ── Instruction-in-data patterns ─────────────────────────────────────────────
+# Applied ONLY when a request declares source="data" (untrusted content the app is
+# processing: retrieved documents, tool output, user-supplied payloads). In that
+# context any instruction addressed to a language model is out of place, because
+# data is meant to be read, not obeyed.
+#
+# These are deliberately NOT applied to source="user" (the default): a user saying
+# "Summarize the following text" is making a legitimate request, not an attack. The
+# same string means opposite things on either side of the trust boundary.
+#
+# Motivation: Open-Prompt-Injection's naive / escape / fake_completion strategies
+# inject a well-formed task instruction with no override vocabulary, so a blocklist
+# of override idioms ("ignore previous instructions") cannot see them. These match
+# on instruction *shape* instead.
+data_instruction_patterns:
+  # Directive verb pointing forward at content — "answer the following text",
+  # "summarize the following two sentences". Rare in ordinary prose payloads.
+  - "\\b(write|answer|respond|reply|tell|identify|correct|summari[sz]e|classify|translate|determine|state|output|print|list|explain|describe|rate|label|extract)\\b[^.?!]{0,80}\\bthe following\\b"
+  - "\\bthe following (text|sentence|sentences|message|content|paragraph|passage|document|two sentences)\\b[^.?!]{0,60}\\b(is|are|contains?|convey|means?)\\b"
+
+  # Explicit output-format constraints — the giveaway of a machine-directed task
+  # spec: "Answer with positive or negative", "write \"yes\" or \"no\"".
+  - "\\b(answer|respond|reply)\\s+(with|using)\\s+(either\\s+)?[\"']?\\w+[\"']?\\s+(or|and)\\s+[\"']?\\w+"
+  - "\\bwrite\\s+[\"'](yes|no|equivalent|not equivalent|entailment|positive|negative)[\"']"
+  - "\\b(without|with no)\\s+(further\\s+)?(explanation|elaboration|commentary)\\b"
+  - "\\bdon'?t\\s+respond\\s+with\\s+explanation\\b"
+  - "\\bdirectly show me\\b"
+
+  # Role assignment to the model from inside the data payload.
+  - "\\byou are (a|an)\\s+(tool|ai|assistant|model|bot|agent|language model)\\b"
+  - "\\byour task is to\\b"
+  - "\\byour job is to\\b"
+
+  # Sentence-initial imperative from a task-verb list. The patterns above only
+  # catch verbose, explicitly-formatted task specs; without this, terse
+  # imperatives ("Translate this sentence into French.", "Summarize in one
+  # line.") were detected 0/12 in a generalisation probe, and they are a
+  # perfectly good injection.
+  #
+  # Measured cost of this one pattern, since it is the loosest rule here:
+  #   0/180 on Open-Prompt-Injection clean task data
+  #   2/100 on additional real SMS payloads (imperative-heavy prose)
+  # It is deliberately scoped to source="data" only — under source="user" a
+  # leading "Summarize ..." is the entire point of the request.
+  - "(?:^|[.!?]\\s+)(?:now\\s+|then\\s+|please\\s+)?(translate|summari[sz]e|rewrite|convert|print|output|list|count|rate|reply|respond|answer|repeat|describe|calculate|compute|say)\\b"
+
 # ── Regex patterns ───────────────────────────────────────────────────────────
 # More expensive but catch structural attacks with variable forms.
 # Each pattern is compiled with re.IGNORECASE and run on normalized text.

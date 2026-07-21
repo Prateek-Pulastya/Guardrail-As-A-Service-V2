@@ -212,8 +212,24 @@ Run with [`scripts/eval_open_prompt_injection.py`](scripts/eval_open_prompt_inje
 | **overall** | **180/450 (40%)** | 57/450 (13%) | **180/450 (40%)** |
 | FPR on clean task data | 0/180 (0%) | 3/180 (2%) | **0/180 (0%)** |
 
-**This is the most important number in this README: 40% recall on the standard
-benchmark, against 100% on the in-house corpus.**
+Those figures are for the default `source="user"`. Declaring the correct trust
+boundary — `source="data"` — closes the gap:
+
+| Attack strategy | Tier 1 `source="user"` | Tier 1 `source="data"` |
+|---|---|---|
+| naive | 0% | **100%** |
+| escape | 0% | **100%** |
+| ignore | 100% | 100% |
+| fake_completion | 0% | **100%** |
+| combined | 100% | 100% |
+| **overall** | **40%** | **100%** |
+| FPR on clean task data | 0/180 | 1/180 (0.6%) |
+
+See [Closing the unmarked-injection gap](#closing-the-unmarked-injection-gap-trust-boundaries)
+for how, and for the residual weakness that remains.
+
+**The 40% figure is what a keyword blocklist achieves on the standard benchmark when
+it does not know which trust boundary the text crossed.**
 
 The breakdown explains exactly why, and it is not a tuning gap. GuardRail detects the
 two strategies that contain the literal string *"Ignore previous instructions."* and
@@ -233,6 +249,55 @@ Tier 2 does not rescue this: a model fine-tuned specifically for prompt-injectio
 detection scores 13% overall, and even on the `ignore` strategy only 38%. Both tiers
 key on override vocabulary. Precision holds up — 0% FPR for Tier 1 on 180 real
 task-data prompts.
+
+### Closing the unmarked-injection gap: trust boundaries
+
+The Open-Prompt-Injection result exposed a threat-model mismatch rather than a missing
+blocklist term. Its `naive` / `escape` / `fake_completion` strategies inject a
+well-formed task instruction into the **data** an application is processing. GuardRail
+was screening every request as if it were the user's own turn, where instructions are
+the normal case — the benign corpus contains "Summarize this document for me." No
+amount of override-idiom matching separates those two situations, because the same
+string is legitimate on one side of the trust boundary and an attack on the other.
+
+`POST /validate` therefore takes an optional `source`:
+
+```json
+{ "prompt": "...", "source": "data" }
+```
+
+| `source` | Meaning | Behaviour |
+|---|---|---|
+| `"user"` (default) | The end user's own turn | Blocklist + structural regexes. Instructions are legitimate. |
+| `"data"` | Untrusted content being processed — retrieved documents, tool output, third-party payloads | The above **plus** `data_instruction_patterns`: an instruction addressed to a model is itself the signal, because data is meant to be read, not obeyed. |
+
+Callers already know which is which — an application passing a retrieved document knows
+it is not a user turn. Measured effect:
+
+| | Tier 1 recall | FPR |
+|---|---|---|
+| Open-Prompt-Injection, `source="user"` | 0.40 | 0/180 |
+| Open-Prompt-Injection, `source="data"` | **1.00** | 1/180 (0.6%) |
+| NotInject (user-turn prompts), `source="user"` | — | **0/339** |
+| In-house corpus, `source="user"` | 1.00 | 0/81 |
+
+The default path is untouched: with `source="user"` every previous number is
+byte-identical (corpus 190/190 attacks, 0 false positives; NotInject 0/339).
+
+**Residual weakness, measured not assumed.** These patterns were written against the
+*shape* of machine-directed instructions, but they were written by someone who had seen
+Open-Prompt-Injection's instruction templates, so 1.00 on that benchmark is partly
+in-sample. A probe with terse imperatives the patterns were not designed for
+("Translate this sentence into French.", "Summarize in one line.", "Print the word
+BANANA.") initially scored **0/12**. Adding one sentence-initial imperative rule takes
+that to 12/12, at a measured cost of 0/180 on clean task data and **2/100 on real SMS
+payloads**, which are unusually imperative-heavy prose.
+
+So the honest position is that the gap is **narrowed, not closed**. Detection now
+covers both verbose task specifications and terse imperatives, but it is still
+pattern-based: an attacker who phrases an injected instruction as declarative prose
+("It would be helpful to know the sentiment of this text") remains undetected. Treat
+`source="data"` as raising the cost of injection, not as a guarantee.
 
 ### External benchmark — NotInject (over-defense)
 

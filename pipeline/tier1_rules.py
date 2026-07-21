@@ -253,6 +253,12 @@ class Tier1Engine:
             re.compile(pat, re.IGNORECASE)
             for pat in cfg.get("regex_patterns", [])
         ]
+        # Applied only to source="data" — see config/rules.yaml for why these are
+        # not safe to run against user-authored prompts.
+        self._data_instruction_patterns: list[re.Pattern] = [
+            re.compile(pat, re.IGNORECASE)
+            for pat in cfg.get("data_instruction_patterns", [])
+        ]
 
     def _build_automaton(self) -> None:
         self._automaton = ahocorasick.Automaton()
@@ -260,7 +266,20 @@ class Tier1Engine:
             self._automaton.add_word(term, (idx, term))
         self._automaton.make_automaton()
 
-    def validate(self, prompt: str) -> MatchResult:
+    def validate(self, prompt: str, source: str = "user") -> MatchResult:
+        """
+        Screen a prompt.
+
+        source="user" (default): the text is the user's own turn. Instructions are
+        expected and legitimate; only the blocklist and structural regexes apply.
+
+        source="data": the text is untrusted content the application is processing
+        (retrieved documents, tool output, third-party payloads). Data is meant to
+        be read, not obeyed, so an instruction addressed to a model is itself the
+        attack signal — `data_instruction_patterns` apply in addition to everything
+        above. This is what catches injected task instructions that carry no
+        override vocabulary.
+        """
         t0 = time.perf_counter()
 
         # Pipeline: decode → normalize → scan
@@ -298,6 +317,19 @@ class Tier1Engine:
                         match_type="regex",
                         latency_ms=round(elapsed, 4),
                     )
+
+        # Instruction-in-data scan — only for untrusted payloads.
+        if source == "data":
+            for pattern in self._data_instruction_patterns:
+                for target in scan_targets:
+                    if pattern.search(target):
+                        elapsed = (time.perf_counter() - t0) * 1000
+                        return MatchResult(
+                            blocked=True,
+                            reason=f"instruction_in_data: {pattern.pattern}",
+                            match_type="data_instruction",
+                            latency_ms=round(elapsed, 4),
+                        )
 
         elapsed = (time.perf_counter() - t0) * 1000
         return MatchResult(

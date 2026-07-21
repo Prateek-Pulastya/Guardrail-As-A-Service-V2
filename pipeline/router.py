@@ -17,6 +17,8 @@ Response contract (what eval_harness.py expects):
 
 import time
 import logging
+from typing import Literal
+
 from fastapi import APIRouter, Request, Query
 from pydantic import BaseModel, Field
 
@@ -27,6 +29,16 @@ validate_router = APIRouter()
 
 class ValidateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=32_000)
+    source: Literal["user", "data"] = Field(
+        default="user",
+        description=(
+            "Trust boundary the text crossed. 'user' (default) = the end user's own "
+            "turn, where instructions are legitimate. 'data' = untrusted content the "
+            "application is processing (retrieved documents, tool output, third-party "
+            "payloads), where an instruction addressed to the model is itself the "
+            "attack signal and stricter checks apply."
+        ),
+    )
 
 
 class ValidateResponse(BaseModel):
@@ -60,7 +72,7 @@ async def validate(
 
     # ── Ablation: Tier 1 only ─────────────────────────────────────────────
     if tier == 1:
-        t1_result = tier1.validate(body.prompt)
+        t1_result = tier1.validate(body.prompt, source=body.source)
         total_ms = (time.perf_counter() - t_total) * 1000
         return ValidateResponse(
             allowed=not t1_result.blocked,
@@ -87,7 +99,7 @@ async def validate(
         )
 
     # ── Tier 1: fast blocklist + regex ────────────────────────────────────
-    t1_result = tier1.validate(body.prompt)
+    t1_result = tier1.validate(body.prompt, source=body.source)
 
     if t1_result.blocked:
         total_ms = (time.perf_counter() - t_total) * 1000
