@@ -25,7 +25,10 @@ primary_region = "fra"       # Frankfurt — closest to CISPA/TU Delft reviewers
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 512              # enough for ONNX model in memory
+  # Measured: the container holds ~1.2 GiB resident once the DeBERTa-v3 ONNX
+  # session, tokenizer and the transformers/onnxruntime stack are loaded.
+  # 512 MB (the previous value) OOMs during Tier 2 warm-up.
+  memory_mb = 2048
 
 [checks]
   [checks.health]
