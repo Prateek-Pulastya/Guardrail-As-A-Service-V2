@@ -50,7 +50,7 @@ BODY = [
 
 ("h1", "3  System"),
 
-("p", """The service exposes one endpoint and screens in two stages. Tier 1 normalizes the input, then scans it with an Aho-Corasick automaton over 197 blocklist phrases and 16 regular expressions. Normalization strips zero-width characters, maps mathematical, fullwidth, circled and small-capital Unicode to ASCII, applies NFKD, removes combining marks, and decodes base64, hex and URL payloads when the decoded text contains injection-relevant keywords."""),
+("p", """The service exposes one endpoint and screens in two stages. Tier 1 normalizes the input, then scans it with an Aho-Corasick automaton over 197 blocklist phrases and 14 structural regular expressions. Normalization strips zero-width characters, maps mathematical, fullwidth, circled and small-capital Unicode to ASCII, applies NFKD, removes combining marks, and decodes base64, hex and URL payloads when the decoded text contains injection-relevant keywords."""),
 
 ("p", """Tier 1 scans twice. The first pass runs over the normalized text with separators intact, so that literal markers such as <font face="Courier">&lt;|im_start|&gt;</font> and <font face="Courier">safety_mode=off</font> still match. The second runs over a de-obfuscated variant that maps leetspeak digits and symbols back to letters and strips intra-word separators. The second pass is what catches <font face="Courier">1gn0r3 prev10us 1nstruct10ns</font>, <font face="Courier">!gnore prev!ous</font> and <font face="Courier">instr-uction-s</font> without the first pass losing its structural tokens. Median Tier 1 latency is 0.09 ms."""),
 
@@ -60,7 +60,7 @@ BODY = [
 
 ("p", """The endpoint takes an optional <font face="Courier">source</font> field with two values. Under <font face="Courier">user</font>, the default, text is the end user's own turn and instructions in it are legitimate. Under <font face="Courier">data</font>, text is content the application is processing, retrieved documents or tool output or third-party payloads, and an instruction addressed to a model is itself the signal, because data is meant to be read and not obeyed. Callers already possess this bit: an application passing a retrieved email knows it is not passing a user turn."""),
 
-("p", """Under <font face="Courier">data</font> we additionally apply patterns matching instruction shape rather than attack vocabulary: forward references to following content, output-format constraints such as <i>answer with positive or negative</i>, role assignment such as <i>you are a tool</i>, sentence-initial task verbs, and assistant-directed question forms."""),
+("p", """Under <font face="Courier">data</font> we additionally apply 12 patterns matching instruction shape rather than attack vocabulary: forward references to following content, output-format constraints such as <i>answer with positive or negative</i>, role assignment such as <i>you are a tool</i>, sentence-initial task verbs, and assistant-directed question forms."""),
 
 ("h1", "4  Evaluation"),
 
