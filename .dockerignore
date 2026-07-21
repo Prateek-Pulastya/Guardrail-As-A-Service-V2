@@ -20,9 +20,11 @@ scripts/
 RUNBOOK.md
 EVALUATION.md
 
-# The unquantized export is ~738 MB and is never loaded: tier2_classifier.py
-# pins file_name="model_quantized.onnx". Keep only the quantized graph.
-models/**/model.onnx
+# Tier 2 loads models/deberta-v3-onnx/model.onnx (fp32) by default — INT8
+# quantization costs ~14-17 points of recall on this model, so the fp32 graph
+# must stay in the image. Exclude the INT8 variants instead; set
+# GUARDRAIL_TIER2_MODEL_FILE and drop these lines if you want to ship INT8.
+models/**/model_quantized*.onnx
 
 *.log
 .env
