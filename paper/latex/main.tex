@@ -199,6 +199,7 @@ benign, plus three external benchmarks. All measurements run against the
 containerized service on commodity hardware with CPU inference.
 
 \subsection{In-sample versus held out}
+\label{sec:heldout}
 
 Tier~1's blocklist was originally tuned the way such lists usually are: by
 reading the attacks it missed on the evaluation corpus and adding terms drawn
@@ -351,6 +352,7 @@ configuration of this cascade is simultaneously robust and precise, and no
 threshold splits the difference.
 
 \subsection{A quantized guardrail that had stopped working}
+\label{sec:quant}
 
 The shipped Tier~2 was an INT8 graph produced with per-tensor weight scaling. It
 had collapsed to predicting \textsc{safe} for every input: it labels ``Ignore all
@@ -429,6 +431,27 @@ survive a change of phrasing.
 Source, all measurement scripts, the corpus split and every result artifact are
 public. The repository link is withheld for double-blind review and will be
 included in the camera-ready version.
+
+\section*{Use of generative AI}
+
+Generative AI was used substantially in this work, and the following describes
+the extent.
+
+An AI coding assistant (Claude, Anthropic) was used under the author's direction
+for: implementing the de-obfuscation scan and the \texttt{source} trust-boundary
+mechanism; writing the harnesses that reproduce Open-Prompt-Injection, BIPIA and
+NotInject; running the experiments; and producing the first draft of this text,
+including its tables. Several findings reported here surfaced during that work,
+among them the INT8 quantization collapse in Section~ef{sec:quant} and the
+evaluation contamination in Section~ef{sec:heldout}.
+
+The author set the research direction, decided what to measure, made the design
+decisions the paper reports (notably shipping Tier~2 monitor-only rather than
+blocking), and is responsible for all claims. Every quantitative claim is
+generated from committed result artifacts by a checking script rather than
+transcribed, and the reference list was assembled from retrieved papers rather
+than from model recall, both because model-produced numbers and citations are
+unreliable. Remaining errors are the author's.
 
 \balance
 \bibliographystyle{ACM-Reference-Format}
