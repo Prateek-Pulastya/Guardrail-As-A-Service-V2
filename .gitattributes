@@ -1,0 +1,15 @@
+# Never apply line-ending conversion to binaries. Without this, Git on Windows
+# warns about CRLF substitution on the paper PDF and the GIF; if its binary
+# heuristic ever misfires the committed file would be silently corrupted.
+*.pdf   binary
+*.gif   binary
+*.png   binary
+*.onnx  binary
+
+# Keep text files LF in the repository regardless of checkout platform.
+*.py    text eol=lf
+*.md    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
