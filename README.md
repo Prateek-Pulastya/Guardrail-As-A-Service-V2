@@ -6,6 +6,19 @@ A low-latency, two-tier prompt injection detection pipeline for production LLM s
 Sub-millisecond on the common path, with automated security scanning (Semgrep, Bandit,
 Safety) on every commit.
 
+Evaluated against four external benchmarks. The headline result is not the in-sample
+score but the gap between it and held-out and external performance — see
+[Results](#results) and [REFERENCES.md](REFERENCES.md), which records which paper
+caused which change.
+
+| Evaluation | Tier 1 recall | FPR |
+|---|---|---|
+| In-house corpus (in-sample) | 1.000 | 0.000 |
+| Held-out split of same corpus | 0.7895 | 0.000 |
+| Open-Prompt-Injection (`source="data"`) | 1.000 | 0.006 |
+| **BIPIA** (`source="data"`) | **0.480** | 0.017 |
+| NotInject (over-defense, benign only) | — | **0.000** |
+
 ---
 
 ## How it works
@@ -636,7 +649,9 @@ Guardrail-As-A-Service/
 │   ├── tier2_classifier.py        # DeBERTa-v3 ONNX classifier
 │   └── router.py                  # POST /validate (+ ?tier= ablation switch)
 ├── config/
-│   └── rules.yaml                 # 197 blocklist terms + 14 regex patterns
+│   ├── rules.yaml                 # Blocklist, regexes, instruction-in-data patterns
+│   ├── rules_base.yaml            # Pre-tuning baseline (no corpus fitting)
+│   └── rules_train_fitted.yaml    # Fitted on the train split only
 ├── tests/
 │   ├── unit/test_tier1.py         # 51 offline unit tests
 │   └── adversarial/test_api.py    # 40 integration tests (service required)
@@ -646,12 +661,23 @@ Guardrail-As-A-Service/
 │   ├── prometheus.yml
 │   └── grafana/
 ├── scripts/
+│   ├── corpus_split.py            # Seeded stratified train/test split
+│   ├── eval_split.py              # Tier 1 per split (refuses to print test misses)
+│   ├── eval_split_pipeline.py     # Full cascade on the held-out split
+│   ├── generalization_report.py   # -> results/generalization.json
+│   ├── build_train_fitted_rules.py# Refit rules from train misses only
+│   ├── eval_notinject.py          # External: over-defense
+│   ├── eval_open_prompt_injection.py  # External: USENIX Sec '24 benchmark
+│   ├── eval_bipia.py              # External: indirect injection
+│   ├── bench_tier2_quant.py       # ONNX graph accuracy/latency comparison
+│   ├── fetch_papers.py            # Downloads the 25-paper corpus
 │   └── make_flow_gif.py           # Regenerates docs/flow.gif
 ├── docs/
 │   └── flow.gif                   # Animated architecture diagram
-├── results/                       # Measured eval output backing Tables 1-5
+├── results/                       # Measured output backing every table
 ├── eval_harness.py                # Publication-grade evaluation harness
 ├── EVALUATION.md                  # Reproducibility guide for reviewers
+├── REFERENCES.md                  # Bibliography + which paper caused which change
 ├── RUNBOOK.md                     # End-to-end operational runbook
 ├── Dockerfile
 ├── docker-compose.yml
