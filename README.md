@@ -50,6 +50,10 @@ All numbers below are measured, reproducible from this repo, and stored as JSON 
 [`results/`](results/). Corpus: **271 samples — 190 attack, 81 benign** across 10 attack
 classes. Hardware: local Docker on Windows, CPU inference for Tier 2.
 
+> **No public instance is deployed.** All results were measured against a local
+> `docker compose` stack. `fly.toml` is a ready-to-use deployment config, not a live
+> service — reproduce locally with the Quick Start below.
+
 ### Table 1 — Overall detection
 
 | Metric | Value |

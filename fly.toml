@@ -1,4 +1,16 @@
-# fly.toml — Fly.io deployment for GuardRail-as-a-Service
+# fly.toml — Fly.io deployment config for GuardRail-as-a-Service
+#
+# STATUS: not deployed. This file is a ready-to-use config, not a description of
+# a running service — there is no live guardrail-service.fly.dev endpoint.
+#
+# Before deploying:
+#   1. `app` below must be globally unique on Fly; "guardrail-service" is likely
+#      taken, so pick another name.
+#   2. Run `python -m pipeline.tier2_classifier --download` first. models/ is
+#      gitignored, so a fresh clone has no Tier 2 model and would deploy with the
+#      classifier failing open (Tier 1 only).
+#   3. Fly has no free tier; a 2 GB shared-cpu machine incurs monthly cost.
+#
 # Deploy with: fly deploy
 
 app = "guardrail-service"

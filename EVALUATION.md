@@ -210,4 +210,9 @@ in legitimate contexts. These validate that the system does not over-block.
 | Unit tests | `tests/unit/test_tier1.py` |
 | Integration tests | `tests/adversarial/test_api.py` |
 | Full eval results | `results/eval_results.json` |
-| Public API | https://guardrail-service.fly.dev |
+| Source repository | https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2 |
+
+> **No hosted public endpoint is currently deployed.** `fly.toml` is provided as a
+> ready-to-use deployment config, but no instance is running, so there is no live URL to
+> cite. Reviewers should reproduce locally via `docker compose up --build -d` — every
+> number in this document was measured that way, not against a hosted service.
