@@ -52,6 +52,40 @@ class ValidateResponse(BaseModel):
 
 
 @validate_router.post(
+    "/explain",
+    tags=["validation"],
+    summary="Validate a prompt and return the full pipeline trace",
+)
+async def explain(request: Request, body: ValidateRequest):
+    """
+    Same verdict as /validate, plus the intermediate representations and the exact
+    match, so a client can animate *why* a prompt was blocked. For demonstration,
+    not the hot path.
+    """
+    tier1 = request.app.state.tier1
+    tier2 = request.app.state.tier2
+
+    trace = tier1.explain(body.prompt, source=body.source)
+
+    # Tier 2 only runs (and is only meaningful) when Tier 1 clears the prompt.
+    tier2_score = None
+    if not trace["blocked"]:
+        t2 = tier2.validate(body.prompt)
+        tier2_score = t2.score
+
+    # Monitor-only cascade: Tier 1 is the only blocking stage.
+    return {
+        "allowed": not trace["blocked"],
+        "blocked_by": "tier1" if trace["blocked"] else None,
+        "tier2_score": tier2_score,
+        "tier2_monitor_flag": bool(
+            tier2_score is not None and tier2_score >= 0.75
+        ),
+        "trace": trace,
+    }
+
+
+@validate_router.post(
     "/validate",
     response_model=ValidateResponse,
     tags=["validation"],

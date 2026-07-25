@@ -354,3 +354,88 @@ class Tier1Engine:
             match_type=None,
             latency_ms=round(elapsed, 4),
         )
+
+    def explain(self, prompt: str, source: str = "user") -> dict:
+        """
+        Same decision as validate(), but returns the intermediate representations
+        and the exact match, so a caller can show *why* a prompt was blocked.
+
+        This is for demonstration and debugging, not the hot path — it reproduces
+        the pipeline stage by stage and records each transform. The verdict it
+        reports is identical to validate().
+        """
+        decoded = _decode_payload(prompt)
+        normalized = _normalize(decoded)
+        deobf = _deobfuscate(normalized)
+
+        steps = [
+            {"stage": "input", "label": "raw prompt", "text": prompt},
+        ]
+        if decoded != prompt:
+            steps.append({"stage": "decode", "label": "decoded (base64/hex/URL)",
+                          "text": decoded})
+        steps.append({"stage": "normalize",
+                      "label": "normalized (Unicode to ASCII, strip, lowercase)",
+                      "text": normalized})
+        if deobf != normalized:
+            steps.append({"stage": "deobfuscate",
+                          "label": "de-obfuscated (de-leet, strip separators)",
+                          "text": deobf})
+
+        scan_targets = [("normalized", normalized)]
+        if deobf != normalized:
+            scan_targets.append(("de-obfuscated", deobf))
+
+        def hit(match_type, reason, target_name, target_text, span):
+            return {
+                "blocked": True,
+                "match_type": match_type,
+                "reason": reason,
+                "matched_in": target_name,
+                "matched_text": target_text,
+                "match_start": span[0],
+                "match_end": span[1],
+                "steps": steps,
+                "source": source,
+            }
+
+        # Blocklist
+        for name, text in scan_targets:
+            for end_idx, (_, term) in self._automaton.iter(text):
+                start = end_idx - len(term) + 1
+                return hit("blocklist", term, name, text, (start, end_idx + 1))
+
+        # Structural regex
+        for pattern in self._regex_patterns:
+            for name, text in scan_targets:
+                m = pattern.search(text)
+                if m:
+                    return hit("regex", pattern.pattern, name, text, m.span())
+
+        # Instruction-in-data
+        if source == "data":
+            lb = _normalize_linebreaks(decoded)
+            data_targets = scan_targets + [("line-break normalized", lb)]
+            if lb != normalized:
+                steps.append({"stage": "data-normalize",
+                              "label": "line-break preserved (data payloads)",
+                              "text": lb})
+            for pattern in self._data_instruction_patterns:
+                for name, text in data_targets:
+                    m = pattern.search(text)
+                    if m:
+                        return hit("data_instruction",
+                                   f"instruction_in_data: {pattern.pattern}",
+                                   name, text, m.span())
+
+        return {
+            "blocked": False,
+            "match_type": None,
+            "reason": None,
+            "matched_in": None,
+            "matched_text": normalized,
+            "match_start": None,
+            "match_end": None,
+            "steps": steps,
+            "source": source,
+        }
