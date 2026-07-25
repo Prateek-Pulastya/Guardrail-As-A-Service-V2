@@ -488,10 +488,22 @@ with Tier 2 failing open.
 
 | Method | Path | Description |
 |---|---|---|
+| `GET` | `/` , `/ui` | Web playground (type a prompt, see the verdict) |
 | `GET` | `/health` | Health check |
 | `POST` | `/validate` | Validate a prompt |
 | `GET` | `/metrics` | Prometheus metrics |
 | `GET` | `/docs` | Swagger UI |
+
+### Web playground
+
+`http://localhost:8100/ui` is a self-contained page (no build step, served straight
+from the service) for trying prompts by hand. It shows the verdict, which tier
+decided, latency, and the Tier 2 score. It deliberately labels results
+**ALLOWED / BLOCKED**, not safe/unsafe — "allowed" is the guardrail's decision, not a
+guarantee, and the page says so. The `source: user | data` toggle is front and centre,
+since flipping it on the same prompt is the clearest way to see the trust-boundary
+result. Benign prompts that Tier 2 over-defends on show an amber "monitor-only" flag,
+which is the over-defense trade-off made visible.
 
 ### POST /validate
 

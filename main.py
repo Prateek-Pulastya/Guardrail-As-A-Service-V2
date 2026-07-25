@@ -9,9 +9,10 @@ import time
 import logging
 import json
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from prometheus_client import make_asgi_app, Counter, Histogram, Gauge
 
 from pipeline.router import validate_router
@@ -68,6 +69,21 @@ app.include_router(validate_router)
 @app.get("/health", tags=["ops"])
 async def health():
     return {"status": "ok", "version": "1.0.0"}
+
+
+# ── Web playground (self-contained, no build step) ─────────────────────────
+_UI_FILE = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/ui", include_in_schema=False)
+async def playground():
+    return FileResponse(_UI_FILE, media_type="text/html")
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    # Serve the playground at the root if it exists, else point at the docs.
+    return FileResponse(_UI_FILE) if _UI_FILE.exists() else RedirectResponse("/docs")
 
 
 @app.middleware("http")
