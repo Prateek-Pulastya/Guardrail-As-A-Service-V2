@@ -35,3 +35,8 @@ safety-report.json
 
 # Cached external benchmark data (re-fetched by scripts/eval_notinject.py)
 data/
+
+# Compiled paper downloads (Overleaf output). The tracked paper is
+# paper/guardrail_paper.pdf; keep ad-hoc compiles out of the repo, and out of a
+# public author-named repo during double-blind review.
+paper/Guardrail*.pdf
