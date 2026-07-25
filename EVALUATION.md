@@ -7,8 +7,8 @@ This document enables full reproduction of all results reported in the paper.
 ## Prerequisites
 
 ```bash
-git clone https://github.com/Prateek-Pulastya/Guardrail-As-A-Service
-cd Guardrail-As-A-Service
+git clone https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2
+cd Guardrail-As-A-Service-V2
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```

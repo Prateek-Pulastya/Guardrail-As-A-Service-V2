@@ -1,6 +1,6 @@
 # GuardRail-as-a-Service
 
-[![CI](https://github.com/Prateek-Pulastya/Guardrail-As-A-Service/actions/workflows/security.yml/badge.svg)](https://github.com/Prateek-Pulastya/Guardrail-As-A-Service/actions/workflows/security.yml)
+[![CI](https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2/actions/workflows/security.yml/badge.svg)](https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2/actions/workflows/security.yml)
 
 A low-latency, two-tier prompt injection detection pipeline for production LLM serving.
 Sub-millisecond on the common path, with automated security scanning (Semgrep, Bandit,
@@ -458,8 +458,8 @@ the Tier 2 model. Errors are connection resets under concurrency (0.1% and 0.8%)
 
 ```bash
 # 1. Clone
-git clone https://github.com/Prateek-Pulastya/Guardrail-As-A-Service
-cd Guardrail-As-A-Service
+git clone https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2
+cd Guardrail-As-A-Service-V2
 
 # 2. Download Tier 2 model (~250MB download, ~45MB quantized, one-time)
 pip install -r requirements.txt
@@ -669,7 +669,7 @@ Docker Desktop → Settings → Docker Engine:
 ## File Structure
 
 ```
-Guardrail-As-A-Service/
+Guardrail-As-A-Service-V2/
 ├── main.py                        # FastAPI app, Prometheus, lifespan
 ├── pipeline/
 │   ├── tier1_rules.py             # Aho-Corasick, normalizer, de-obfuscation pass

@@ -775,7 +775,7 @@ Attack class distribution:
 
 ```bash
 git init                                    # if not already a git repo
-git remote add origin https://github.com/Prateek-Pulastya/Guardrail-As-A-Service.git
+git remote add origin https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2.git
 
 # Stage everything
 git add \
@@ -813,7 +813,7 @@ git push -u origin main
 Verify the GitHub Actions CI runs automatically on push:
 
 ```
-https://github.com/Prateek-Pulastya/Guardrail-As-A-Service/actions
+https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2/actions
 ```
 
 **Expect 6 workflow jobs:**
@@ -933,7 +933,7 @@ Sub-Millisecond Prompt Injection Detection
 ```
 
 In the abstract and paper, include:
-- GitHub URL: `https://github.com/Prateek-Pulastya/Guardrail-As-A-Service`
+- GitHub URL: `https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2`
 - Commit hash from Phase 18
 - Public API: `https://guardrail-service.fly.dev`
 
