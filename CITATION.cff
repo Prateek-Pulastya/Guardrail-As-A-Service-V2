@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software or its evaluation results, please cite it."
+title: "GuardRail-as-a-Service: a two-tier prompt injection detection pipeline"
+authors:
+  - family-names: Pulastya
+    given-names: Prateek
+repository-code: "https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2"
+license: MIT
+version: 1.0.0
+date-released: 2026-10-22
+preferred-citation:
+  type: article
+  title: "Trust Boundaries and the Limits of Pattern-Based Prompt Injection Detection"
+  authors:
+    - family-names: Pulastya
+      given-names: Prateek
+  year: 2026

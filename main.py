@@ -46,6 +46,15 @@ async def lifespan(app: FastAPI):
     app.state.tier1 = Tier1Engine()
     logger.info("Warming up Tier 2 classifier...")
     app.state.tier2 = Tier2Classifier()
+
+    # Startup canary: a loaded-but-collapsed Tier 2 fails open and looks healthy
+    # from outside (the INT8 failure this project documents). Catch it loudly.
+    app.state.tier2_canary_ok = app.state.tier2.self_test()
+    if app.state.tier2_canary_ok is False:
+        logger.error(
+            "TIER2 CANARY FAILED: classifier scored a known attack as SAFE. "
+            "The Tier 2 graph is collapsed or wrong; the cascade is Tier-1-only."
+        )
     logger.info("GuardRail ready.")
     yield
     logger.info("GuardRail shutting down.")
@@ -67,8 +76,17 @@ app.include_router(validate_router)
 
 
 @app.get("/health", tags=["ops"])
-async def health():
-    return {"status": "ok", "version": "1.0.0"}
+async def health(request: Request):
+    t2 = request.app.state.tier2
+    canary = request.app.state.tier2_canary_ok
+    # "ok" only when Tier 2 is loaded and passes its canary; "degraded" when it
+    # is missing or collapsed (still serving Tier 1, but the second tier is down).
+    status = "ok" if (t2.loaded and canary) else "degraded"
+    return {
+        "status": status,
+        "version": "1.0.0",
+        "tier2": {**t2.status(), "canary_ok": canary},
+    }
 
 
 # ── Web playground (self-contained, no build step) ─────────────────────────
