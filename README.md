@@ -1,7 +1,7 @@
 # GuardRail-as-a-Service
 
 [![CI](https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2/actions/workflows/security.yml/badge.svg)](https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2/actions/workflows/security.yml)
-[![Paper DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21746424.svg)](https://doi.org/10.5281/zenodo.21746424)
+[![Paper DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21746423.svg)](https://doi.org/10.5281/zenodo.21746423)
 [![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23617102.svg)](https://doi.org/10.5281/zenodo.23617102)
 
 A low-latency, two-tier prompt injection detection pipeline for production LLM serving.
@@ -744,7 +744,7 @@ All 91 pass against the current build.
 
 Software archived at [doi.org/10.5281/zenodo.23617102](https://doi.org/10.5281/zenodo.23617102)
 (concept DOI, resolves to the latest release); paper preprint at
-[doi.org/10.5281/zenodo.21746424](https://doi.org/10.5281/zenodo.21746424).
+[doi.org/10.5281/zenodo.21746423](https://doi.org/10.5281/zenodo.21746423).
 MIT — see [LICENSE](LICENSE). The Tier 2 model
 (`protectai/deberta-v3-base-prompt-injection-v2`) is downloaded at build time and is a
 separate third-party artifact under its own license; confirm its terms on Hugging Face
