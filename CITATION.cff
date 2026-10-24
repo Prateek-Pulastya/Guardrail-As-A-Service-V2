@@ -5,6 +5,7 @@ authors:
   - family-names: Pulastya
     given-names: Prateek
 repository-code: "https://github.com/Prateek-Pulastya/Guardrail-As-A-Service-V2"
+doi: 10.5281/zenodo.21746424
 license: MIT
 version: 1.0.0
 date-released: 2026-10-22
