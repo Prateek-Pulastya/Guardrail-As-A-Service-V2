@@ -4,7 +4,7 @@
 [![Paper DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21746423.svg)](https://doi.org/10.5281/zenodo.21746423)
 [![Code DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23617102.svg)](https://doi.org/10.5281/zenodo.23617102)
 
-A low-latency, two-tier prompt injection detection pipeline for production LLM serving.
+A low-latency, two-tier prompt injection detection pipeline for LLM serving.
 Sub-millisecond on the common path, with automated security scanning (Semgrep, Bandit,
 Safety) on every commit.
 
