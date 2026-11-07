@@ -36,7 +36,12 @@ def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
     data = r.json()
-    assert data["status"] == "ok"
+    tier2 = data["tier2"]
+    # "ok" only when Tier 2 is loaded and passes its startup canary; otherwise
+    # "degraded" while Tier 1 keeps serving. CI images ship without the model
+    # (models/ is not in the repo), so CI expects "degraded" by design.
+    expected = "ok" if (tier2["loaded"] and tier2["canary_ok"] is True) else "degraded"
+    assert data["status"] == expected
 
 
 # ── Response contract ──────────────────────────────────────────────────────
